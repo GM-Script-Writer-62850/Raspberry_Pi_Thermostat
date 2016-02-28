@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8"/>
+		<title>Thermostat Temperature Settings</title>
+		<link href="favicon.png" rel="shortcut icon">
+		<link type="text/css" href="style/styles.css" rel="stylesheet"/>
+		<link type="text/css" href="style/cron.css" rel="stylesheet"/>
+		<script src="/scripts/main.js" type="text/javascript"></script>
+		<script src="/scripts/cron.js" type="text/javascript"></script>
+		<script src="/scripts/weather.js" type="text/javascript"></script>
+	</head>
+	<body onload="load()">
+		<div class="padding"></div>
+		<div id="content">
+			<div id="header">
+				Thermostat Temperature Settings
+				<div id="temp"></div>
+			</div>
+			<div id="body">
+				<form action="apply.php" onsubmit="return apply(this);" method="POST" name="thermostat">
+					<div id="tips">
+						<h3>Instructions</h3>
+						<ul>
+							<li>You can press <code>&plusmn;</code>  instead of typing numbers.
+								<ul>
+									<li>Hold Shift when pressing <code>-</code> to switch between negative and positive values.</li>
+								</ul>
+							</li>
+							<li>The Current Temperature is accurate to within <code>&plusmn;</code> 0.9&deg;F, 0.5&deg;C or 0.5 K</li>
+							<li>The background indicates rather the unit need to be set to Heat/E. Heat or Cool.
+								<ul>
+									<li>This is determined based on your Trigger Offset.
+										<ul>
+											<li>Negative is for Heating</li>
+											<li>Positive is for Cooling</li>
+											<li>0 is for Copycat Mode</li>
+										</ul>
+									</li>
+									<li>Copycat mode copies the mercury tubes.</li>
+								</ul>
+							</li><!--
+							<li>All other temperature offsets are combined with the
+								<span class="cool">Cool</span>
+								<span class="heat">Heat</span>
+								<span class="copycat">Temperature</span>
+								Offset.
+								<ul>
+									<li>When triggered the auxiliary heat is activated.</li>
+								</ul>
+							</li>-->
+						</ul>
+					</div>
+					<div class="item">
+						<div class="label">
+							Temperature Format:
+						</div>
+						<div class="value">
+							<select name="format">
+								<option value="F">Fahrenheit</option>
+								<option value="C">Celsius</option>
+								<option value="K">Kelvin</option>
+							</select>
+						</div>
+					</div>
+					<div class="item">
+						<div class="label">
+							Target Temperature:
+						</div>
+						<div class="value">
+							<input value="68" size="3" type="text" onchange="this.value=Number(this.value)||0;" onblur="setBackground(thermostat);" onkeypress="return validateKey(this,event,true);" name="target"/><span class="deg">&deg;</span>
+						</div>
+					</div>
+					<div class="item">
+						<div class="label">
+							<span class="cool">Cool</span>
+							<span class="heat">Heat</span>
+							<span class="copycat">Temperature</span>
+							Offset:
+						</div>
+						<div class="value">
+							<input value="2" size="2" type="text" onchange="this.value=Number(this.value)||0;" onblur="setBackground(thermostat);" onkeypress="return validateKey(this,event,true);" name="trigger"/><span class="deg">&deg;</span>
+						</div>
+					</div>
+					<div class="item aux">
+						<div class="label">
+							Auxiliary On Offset:
+						</div>
+						<div class="value">
+							-<input value="3" size="2" type="text" onchange="this.value=Number(this.value)||0;" onblur="setBackground(thermostat);" onkeypress="return validateKey(this,event,false);" name="auxon"/><span class="deg">&deg;</span>
+						</div>
+					</div>
+					<div class="item aux">
+						<div class="label">
+							Auxiliary Off Offset:
+						</div>
+						<div class="value">
+							<input value="1" size="2" type="text" onchange="this.value=Number(this.value)||1;" onblur="setBackground(thermostat);" onkeypress="return validateKey(this,event,false);" name="auxoff"/><span class="deg">&deg;</span>
+						</div>
+					</div>
+					<div class="item">
+						<div class="label">
+							Day Offset:
+						</div>
+						<div class="value">
+							<input value="0" size="2" type="text" onchange="this.value=Number(this.value)||0;" onblur="setBackground(thermostat);" onkeypress="return validateKey(this,event,true);" name="day"/><span class="deg">&deg;</span>
+						</div>
+					</div>
+					<div class="item">
+						<div class="label">
+							Sunrise Offset:
+						</div>
+						<div class="value">
+							<input value="0" size="2" type="text" onchange="this.value=Number(this.value)||0;" onblur="setBackground(thermostat);" onkeypress="return validateKey(this,event,true);" name="sunrise"/> minutes
+						</div>
+					</div>
+					<div class="item">
+						<div class="label">
+							Night Offset:
+						</div>
+						<div class="value">
+							<input value="0" size="2" type="text" onchange="this.value=Number(this.value)||0;" onblur="setBackground(thermostat);" onkeypress="return validateKey(this,event,true);" name="night"/><span class="deg">&deg;</span>
+						</div>
+					</div>
+					<div class="item">
+						<div class="label">
+							Sunset Offset:
+						</div>
+						<div class="value">
+							<input value="0" size="2" type="text" onchange="this.value=Number(this.value)||0;" onblur="setBackground(thermostat);" onkeypress="return validateKey(this,event,true);" name="sunset"/> minutes
+						</div>
+					</div>
+					<div class="item" id="buttons">
+						<div class="label">
+							<input value="Apply" name="update" type="button" onclick="apply(thermostat)"/>
+						</div>
+						<div class="center">
+							<input value="Timed Events" name="update" type="button" onclick="eventManager()"/>
+						</div>
+						<div class="value right">
+							<input value="Reset" type="button" onclick="for(i in O_CFG){thermostat[i].value=O_CFG[i];}setBackground(thermostat);"/>
+						</div>
+					</div>
+				</form>
+				<div>
+					<h3>Proposed Settings</h3>
+					<table id="newSettings" border="1">
+						<tbody>
+							<tr>
+								<th colspan="5">Day</th>
+							</tr>
+							<tr class="day">
+								<th>Time</th>
+								<th>On</th>
+								<th>Off</th>
+								<th class="aux">Aux On</th>
+								<th class="aux">Aux Off</th>
+							</tr>
+							<tr>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td class="aux"></td>
+								<td class="aux"></td>
+							</tr>
+							<tr>
+								<th colspan="5">Night</th>
+							</tr>
+							<tr>
+								<th>Time</th>
+								<th>On</th>
+								<th>Off</th>
+								<th class="aux">Aux On</th>
+								<th class="aux">Aux Off</th>
+							</tr>
+							<tr>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td class="aux"></td>
+								<td class="aux"></td>
+							</tr>
+						</tbody>
+					</table>
+					<span class="copycat">Do what the mercury tubes do.</span>
+				</div>
+				<div id="oldSettings">
+					<h3>Current Settings</h3>
+					<table border="1">
+						<tbody>
+							<tr>
+								<th colspan="5">Day</th>
+							</tr>
+							<tr class="day">
+								<th>Time</th>
+								<th>On</th>
+								<th>Off</th>
+								<th class="aux">Aux On</th>
+								<th class="aux">Aux Off</th>
+							</tr>
+							<tr>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td class="aux"></td>
+								<td class="aux"></td>
+							</tr>
+							<tr>
+								<th colspan="5">Night</th>
+							</tr>
+							<tr>
+								<th>Time</th>
+								<th>On</th>
+								<th>Off</th>
+								<th class="aux">Aux On</th>
+								<th class="aux">Aux Off</th>
+							</tr>
+							<tr>
+								<td></td>
+								<td></td>
+								<td></td>
+								<td class="aux"></td>
+								<td class="aux"></td>
+							</tr>
+						</tbody>
+					</table>
+					<span class="copycat">Do what the mercury tubes do.</span>
+				</div>
+				<div id="status">
+					<div id="tubes">
+						<h3>Murcury Tube Status</h3>
+						<table border="1">
+							<tr><th>Top Tube</th><th>Bottom Tube</th></tr>
+							<tr><td><span></span></td><td><span></span></td></tr>
+						</table>
+					</div>
+					<div id="relays">
+						<h3>Relay Simulation</h3>
+						<table border="1">
+							<tr><th>Top Tube</th><th>Bottom Tube</th></tr>
+							<tr><td><span></span></td><td><span></span></td></tr>
+						</table>
+					</div>
+				</div>
+			</div>
+			<div id="footer">
+				<div class="copycat">
+					If the unit is set to heat, when top tube reads 'Right' the unit is on.
+					If the unit is set to heat, when bottom tube reads 'Right' auxiliary heat is on.<br/>
+					If the unit is set to cool, when top tube reads 'Left' the unit is on.<br/>
+					If the unit is set to cool, the bottom tube does nothing.<br/>
+				</div>
+				LCD panel display is rounded to the nearest intiger.<br/>
+				If the temperature exceeds 2 digits in length only the last 2 digits will be displayed.
+			</div>
+		</div>
+		<div class="padding"></div>
+	</body>
+</html>

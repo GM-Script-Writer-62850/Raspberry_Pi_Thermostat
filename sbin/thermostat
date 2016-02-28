@@ -1,0 +1,206 @@
+#!/usr/bin/python
+import RPi.GPIO as GPIO
+import time
+import datetime
+import json
+import os
+import subprocess
+import sys
+
+nLight=12 # Night Light
+relayA=11 # Top Relay
+relayB=13 # Bottom Relay
+tubeA=15 # Top Tube
+tubeB=16 # Bottom Tube
+delay=2 # Loop Delay
+GPIO.setmode(GPIO.BOARD)
+for i in [relayA, relayB, nLight]:
+	GPIO.setup(i, GPIO.OUT)
+	GPIO.output(i, 0)
+for i in [tubeA, tubeB]:
+	GPIO.setup(i, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+err="/var/www/html/tmp/crash"
+
+def readJSON(s):
+	try:
+		with open("/var/www/html/"+s,'r') as cfg:
+			cfg=json.load(cfg)
+	except:
+		time.sleep(0.005)
+		s=readJSON(s)
+	return cfg
+def readTemp():
+	s="/sys/devices/w1_bus_master1/28-011453d75eff/w1_slave"
+	if not os.path.isfile(s):
+		return False
+	with open(s, 'r') as f:
+		lines=f.readlines()
+	return lines
+def getTemp():
+	lines=readTemp()
+	if lines is False:
+		return False
+	ct=0
+	while lines[0].strip()[-3:] != 'YES': # Wait what, lets try that again
+		ct=ct+1
+		time.sleep(0.3)
+		lines=readTemp()
+		if ct > 5 or lines is False: # Guess we are not going to get one any time soon
+				return False
+	equals_pos = lines[1].find('t=')
+	if equals_pos != -1:
+		temp = {"temp":int(lines[1][equals_pos+2:]),"tube1":GPIO.input(tubeA),"tube2":GPIO.input(tubeB),"relay1":GPIO.input(relayA),"relay2":GPIO.input(relayB)}
+		with open('/var/www/html/tmp/temp.json', 'w+') as f:
+			json.dump(temp,f)
+		return temp["temp"]
+	return False
+def getOffset(sun,cfg):
+	now=int(time.time())
+	rise=sun["rise"]["stamp"]+cfg["sunrise"]*60
+	set=sun["set"]["stamp"]+cfg["sunset"]*60
+	if now > rise and now < set:
+		GPIO.output(nLight, 1)
+		return cfg["day"]
+	GPIO.output(nLight, 0)
+	return cfg["night"]
+def getTarget(cfg,offset):
+	t=cfg["target"]+offset
+	with open('/var/www/html/tmp/lcd.json', 'w+') as f:
+		f.write('{"format":"'+cfg["format"]+'","on":'+str(t)+',"off":'+str(t+cfg["trigger"])+'}')
+	return t+cfg["trigger"]
+def copyTubes(set):
+	GPIO.output(relayA, GPIO.input(tubeA))
+	GPIO.output(relayA, GPIO.input(tubeB))
+	if not set:
+		GPIO.output(nLight, not GPIO.input(nLight))
+#		print "ERROR"
+	return getTemp()
+def config2C(cfg):
+	# Output is C*1000 to match sensor input (better that way to avoid decimals)
+	cfg["target"]=cfg["target"]+getCronOffset()
+	if cfg["format"] == "F":
+		cfg["target"]=int(round((cfg["target"]-32)*5.0/9.0*1000,0))
+		cfg["trigger"]=int(round(cfg["trigger"]*5.0/9.0*1000,0))
+		cfg["auxon"]=int(round(cfg["auxon"]*5.0/9.0*1000,0)*-1)
+		cfg["auxoff"]=int(round(cfg["auxoff"]*5.0/9.0*1000,0))
+		cfg["day"]=int(round(cfg["day"]*5.0/9.0*1000,0))
+		cfg["night"]=int(round(cfg["night"]*5.0/9.0*1000,0))
+	else:
+		cfg["target"]=cfg["target"]*1000
+		if cfg["format"] == "K":
+			cfg["target"]=cfg["target"]-273150
+		cfg["trigger"]=cfg["trigger"]*1000
+		cfg["auxon"]=cfg["auxon"]*1000*-1
+		cfg["auxoff"]=cfg["auxoff"]*1000
+		cfg["day"]=cfg["day"]*1000
+		cfg["night"]=cfg["night"]*1000
+	return cfg
+def getCronOffset():
+	evts=readJSON("cron.json")
+	today=int(datetime.date.today().strftime("%w"))
+	time=int(datetime.datetime.now().strftime("%H"))*60+int(datetime.datetime.now().strftime("%M"))
+	evtOffset=0
+	for evt in evts:
+		if(evt["enable"]):
+			if today in evt["days"]:
+				start=evt["time"]["start"]["h"]*60+evt["time"]["start"]["m"]
+				end=evt["time"]["end"]["h"]*60+evt["time"]["end"]["m"]
+				if time >= start and time <= end:
+					evtOffset=evtOffset+evt["offset"]
+	return evtOffset
+try:
+	while int(time.time()) < 1435104823: # Wait for clock to work
+		copyTubes(0)
+		time.sleep(delay)
+	subprocess.call(["/usr/bin/php", "/usr/local/bin/sun-set+rise"])
+	while not os.path.isfile("/var/www/html/config.json"): # Wait for device to be set
+		copyTubes(0)
+		time.sleep(delay)
+	if os.path.isfile(err):
+		os.unlink(err)
+	while True:
+		cfg=config2C(readJSON("config.json"))
+		sun=readJSON("tmp/sun.json")
+		offset=getOffset(sun,cfg)
+		temp=getTemp()
+		target=getTarget(cfg,offset)
+		while temp is False: # Sensor is missing
+			temp = copyTubes(0)
+			time.sleep(delay)
+		if cfg["trigger"] > 0: # Cooling
+			GPIO.output(relayB, 0)
+			if target <= temp:
+				GPIO.output(relayA, 1) # Cool
+				while temp >= cfg["target"]+offset: # Keep cooling
+					time.sleep(delay)
+					cfg=config2C(readJSON("config.json"))
+					if cfg["trigger"] <= 0:
+						break
+					sun=readJSON("tmp/sun.json")
+					offset=getOffset(sun,cfg)
+					temp=getTemp()
+				GPIO.output(relayA, 0) # Stop cooling
+			else:
+				GPIO.output(relayA, 0) # Do not cool
+		elif cfg["trigger"] < 0 : # Heating
+			if target >= temp:
+				GPIO.output(relayA, 0) # Heat
+#				startTemp=temp
+#				started=False
+				while temp <= cfg["target"]+offset: # Keep heating
+#					if not started and temp-500 < startTemp: # If temp drop after start (drop of 0.5C/0.9F)
+#						GPIO.output(relayB, 1) # Need more heat
+#						while temp < startTemp+250 and temp <= cfg["target"]+offset: # wait till back where we started (gain of 0.25C/0.45F)
+#							time.sleep(delay)
+#							temp=getTemp()
+#							started=config2C(readJSON("config.json"))
+#							if started != cfg: # Exit task on new settings
+#								cfg=started
+#								break
+#						GPIO.output(relayB, 0) # Heat slower
+#						started=True # Don't do this again this heating cycle 
+					if GPIO.input(relayB) == 0:
+						aux=cfg["auxon"] # aux off
+					else:
+						aux=cfg["auxon"]+cfg["auxoff"] # aux on
+					if temp <= target+aux:
+						if GPIO.input(relayB) == 0:
+							GPIO.output(relayB, 1) # Need more heat
+#							print "More heat - "+str(temp)
+					else:
+						if GPIO.input(relayB) == 1:
+							GPIO.output(relayB, 0) # Heat slower
+#							print "AUX off - "+str(temp)
+					time.sleep(delay)
+					cfg=config2C(readJSON("config.json"))
+					if cfg["trigger"] >= 0:
+						break
+					sun=readJSON("tmp/sun.json")
+					offset=getOffset(sun,cfg)
+					temp=getTemp()
+					target=getTarget(cfg,offset)
+				GPIO.output(relayB, 0) # Stop Heating
+				GPIO.output(relayA, 1) # Stop Heating
+			else: # Do not heat
+				GPIO.output(relayA, 1)
+				GPIO.output(relayB, 0)
+		else:
+			copyTubes(1)
+		time.sleep(delay)
+except KeyboardInterrupt:
+	print "\n"
+except BaseException, e: # Something went wrong
+	exc_type, exc_value, exc_traceback = sys.exc_info()
+	with open(err, 'w+') as f:
+		f.write(str(exc_value))
+	try:
+		while True:
+			copyTubes(0)
+			time.sleep(delay)
+	except KeyboardInterrupt:
+		print "\n"
+	except BaseException, e: # Something went very wrong
+		exc_type, exc_value, exc_traceback = sys.exc_info()
+		with open(err, 'a') as f:
+			f.write(str(exc_value))
+GPIO.cleanup()

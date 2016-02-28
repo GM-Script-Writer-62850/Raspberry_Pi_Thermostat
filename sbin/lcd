@@ -1,0 +1,142 @@
+#!/usr/bin/python
+import RPi.GPIO as GPIO
+import os.path as path
+import time
+import json
+import thread
+
+a=32
+b=33
+c=36
+d=35
+e=38
+f=37
+g=40
+
+da=18
+db=19
+dc=22
+dd=21
+
+ia=29
+ib=31
+
+def readJSON(f):
+	s="/var/www/html/tmp/"+f
+	while not path.isfile(s):
+		time.sleep(1)
+	try:
+		with open(s,'r') as cfg:
+			s=json.load(cfg)
+	except:
+		time.sleep(0.005)
+		print "Error catch"
+		s=readJSON(f)
+	return s
+def saveTarget(adj):
+	with open("/var/www/html/config.json",'r+') as f:
+		cfg=json.load(f)
+		cfg["target"]=cfg["target"]+adj
+		f.seek(0)
+		json.dump(cfg, f)
+		f.truncate()
+	return cfg
+def toInt(i):
+	return int(round(i,0))
+def strInt(i):
+	if i == "-":
+		return 10
+	elif i == "":
+		return 11
+	return int(float(i))
+def saveTarget(adj):
+	with open("/var/www/html/config.json",'r+') as f:
+		cfg=json.load(f)
+		cfg["target"]=cfg["target"]+adj
+		f.seek(0)
+		json.dump(cfg, f)
+		f.truncate()
+	return cfg
+def showTarget(on):
+	target=str(on)
+	numbers[2]=strInt(target[-2:-1])
+	numbers[3]=strInt(target[-1:])
+def LCD_panel():
+	then=3
+	now=0
+	while True:
+		then=now
+		now=then+1
+		if now>3:
+			now=0
+		GPIO.output(digits[then], 1)
+		ct=0
+		for i in segments[numbers[now]]:
+			GPIO.output(panel[ct], i)
+			ct=ct+1
+		GPIO.output(digits[now], 0)
+		time.sleep(0.0055)
+
+GPIO.setmode(GPIO.BOARD)
+for i in [a,b,c,d,e,f,g,da,db,dc,dd]:
+	GPIO.setup(i, GPIO.OUT)
+	GPIO.output(i, 1)
+for i in [ib,ia]:
+        GPIO.setup(i, GPIO.IN,pull_up_down=GPIO.PUD_DOWN)
+#        A  B  C  D  E  F  G
+panel=[a,b,c,d,e,f,g]
+segments=[]
+#                A B C D E F G
+segments.append([0,0,0,0,0,0,1])# 0
+segments.append([1,0,0,1,1,1,1])# 1
+segments.append([0,0,1,0,0,1,0])# 2
+segments.append([0,0,0,0,1,1,0])# 3
+segments.append([1,0,0,1,1,0,0])# 4
+segments.append([0,1,0,0,1,0,0])# 5
+segments.append([1,1,0,0,0,0,0])# 6
+segments.append([0,0,0,1,1,1,1])# 7
+segments.append([0,0,0,0,0,0,0])# 8
+segments.append([0,0,0,1,1,0,0])# 9
+segments.append([1,1,1,1,1,1,0])# -
+segments.append([1,1,1,1,1,1,1])# blank
+
+digits=[da,db,dc,dd]
+numbers=[11,11,11,11]
+thread.start_new_thread(LCD_panel,())
+try:
+	while True:
+		# {"relay2": 0, "relay1": 1, "tube1": 0, "temp": 27375, "tube2": 0}
+		temp=readJSON('temp.json') 
+		temp=temp["temp"]
+		lcd=readJSON('lcd.json')
+		on=lcd["on"]
+		#off=lcd["off"]
+		if(lcd["format"]=="F"):
+			temp=toInt((temp*1.8+32000.0)/1000.0)
+			on=toInt((on*1.8+32000.0)/1000.0)
+			#off=toInt((off*1.8+32000.0)/1000.0)
+		else:
+			temp=toInt(temp/1000.0)
+			on=toInt(on/1000.0)
+			#off=toInt(off/1000.0)
+		thermal=str(temp)
+		numbers[0]=strInt(thermal[-2:-1])
+		numbers[1]=strInt(thermal[-1:])
+		if GPIO.input(ia) or GPIO.input(ib):
+			adj=0
+			while GPIO.input(ia) or GPIO.input(ib):
+				if GPIO.input(ia):
+					on=on-1
+					adj=adj-1
+				else:
+					on=on+1
+					adj=adj+1
+				showTarget(on)
+				time.sleep(1)
+			saveTarget(adj)
+			time.sleep(2.3)
+		else:
+			showTarget(on)
+		time.sleep(1.2)
+except KeyboardInterrupt:
+	GPIO.cleanup()

@@ -1,0 +1,157 @@
+/* image credits
+snow.gif: http://i1005.photobucket.com/albums/af171/shortfuze94/falling-snow.gif
+snow.png: https://raw.githubusercontent.com/MrInanimated/bp-overlay/master/themes/xmas/snow_backdrop.png
+lava.jpg: https://s-media-cache-ak0.pinimg.com/564x/da/5c/7d/da5c7d8f4e57a47e512f4cce624cf18a.jpg
+copycat.jpg: http://officialnicole.com/wp-content/uploads/2015/11/copycats.jpg
+favicon.png: http://www.fancyicons.com/free-icons/139/oxe/png/64/termometer_64.png
+*/
+html{
+	height:100%;
+	background:white;
+}
+body.cool{
+	background-image:url(snow.png), url(snow.gif);
+	background-position:center bottom, left top;
+	background-repeat:repeat-x, repeat;
+}
+body.heat{
+	background-image:url(lava.jpg);
+}
+body.copy{
+	background-color:#f07d2a;
+	background-image:url(copycat.jpg),url(copycat.jpg);
+	background-position:bottom right, bottom left;
+	background-repeat:no-repeat;
+}
+body:not(.heat) #body .aux,
+body:not(.heat) #body .item.aux,
+body.copy #newSettings,
+#body form.K .deg,
+#oldSettings:not(.heat) tr > .aux,
+#oldSettings:not(.heat) div.aux,
+#oldSettings:not(.copy) .copycat,
+#oldSettings.copy table,
+body:not(.copy) #footer .copycat,
+body:not(.heat) span.heat,
+body:not(.cool) span.cool,
+body:not(.copy) span.copycat{
+	display:none;
+}
+body.heat #status td:first-child .Right,
+body.heat #status td:last-child .Right,
+body.cool #status td:first-child .Left{
+	color:red;
+}
+body.heat #status td:first-child .Left,
+body.heat #status td:last-child .Left,
+body.cool #status td:first-child .Right{
+	color:lime;
+}
+#oldSettings.copy .copycat,
+#oldSettings.heat div.aux{
+	display:block;
+}
+#oldSettings.heat tr > .aux{
+	display:table-cell;
+}
+body{
+	text-align:center;
+	font-family:"Times New Roman";
+	margin:0;
+	min-height:100%;
+}
+body > div.padding{
+	display:block;
+	height:5px;
+}
+a{
+	color:teal;
+}
+code{
+	font-size:15px;
+}
+#content{
+	text-align:left;
+	display:block;
+	width:650px;
+	margin:0 auto;
+	background:rgba(0,0,0,.85);
+	color:white;
+	border-radius:10px;
+	padding:7px;
+}
+#header{
+	padding-left:64px;
+	min-height:64px;
+	background-image:url(../favicon.png);
+	background-position:left center;
+	background-repeat:no-repeat;
+	font-size:32px;
+}
+#header #temp{
+	display:inline-block;
+	float:right;
+	color:black;
+	background:rgba(255,255,255,.8);
+	border-radius:5px;
+	padding:0 5px;
+}
+#footer{
+	padding-top:5px;
+}
+#body{
+	min-height:400px;
+}
+#body input[type="text"]{
+	text-align:left;
+}
+#body .item{
+	width:50%;
+	display:block;
+	margin-top:3px;
+}
+#body .label,#body .value{
+	width:calc( 50% - 2px );
+	display:inline-block;
+}
+#body #tips{
+	float:right;
+	width:50%;
+}
+#body #tips > ul{
+	padding-left:20px;
+}
+#body h3, #body #tips ul{
+	margin:0;
+}
+#body > div, #body > div h3{
+	display:inline-block;
+	text-align:center;
+}
+#body > div{
+	width:calc(50% - 2px);
+}
+#body #status{
+	margin-top:10px;
+	width:calc( 29% - 2px);
+	float:right;
+}
+#body #weather{
+	margin-top:10px;
+	width:calc( 71% - 2px);
+}
+#body > div h3{
+	width:100%;
+}
+#body > div table{
+	margin:0 auto;
+}
+table,th,td{
+	border-radius:3px;
+}
+th,td{
+	padding:2px 3px;
+}
+#footer{
+	text-align:center;
+}

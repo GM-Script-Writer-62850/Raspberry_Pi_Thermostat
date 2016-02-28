@@ -1,0 +1,30 @@
+#!/usr/bin/php
+<?php
+	$sun=(object)array();
+	$Time=time();
+	$Latitude=0; # Set this to your location
+	$Longitude=0; # Set this to your location
+	$Zenith=90;
+	$GMT=intval(shell_exec('date +%z'))/100;
+	$sun->{"rise"}=(object)array();
+	$sun->{"set"}=(object)array();
+	$sun->{"rise"}->{"time"}=date_sunrise($Time, SUNFUNCS_RET_STRING, $Latitude, $Longitude, $Zenith, $GMT);
+	$sun->{"set"}->{"time"}=date_sunset($Time, SUNFUNCS_RET_STRING, $Latitude, $Longitude, $Zenith, $GMT);
+	$Time=explode(':',$sun->{"rise"}->{"time"});
+	$sun->{"rise"}->{"hour"}=(int)$Time[0];
+	$sun->{"rise"}->{"minute"}=(int)$Time[1];
+	$sun->{"rise"}->{"time"}=strtoupper(date("g:i a", strtotime($sun->{"rise"}->{"time"})));
+	$sun->{"rise"}->{"stamp"}=mktime($sun->{"rise"}->{"hour"},$sun->{"rise"}->{"minute"},0,date("n"),date("j"),date("Y"));
+	$Time=explode(':',$sun->{"set"}->{"time"});
+	$sun->{"set"}->{"hour"}=(int)$Time[0];
+	$sun->{"set"}->{"minute"}=(int)$Time[1];
+	$sun->{"set"}->{"time"}=strtoupper(date("g:i a", strtotime($sun->{"set"}->{"time"})));
+	$sun->{"set"}->{"stamp"}=mktime($sun->{"set"}->{"hour"},$sun->{"set"}->{"minute"},0,date("n"),date("j"),date("Y"));
+	$f=@fopen("/var/www/html/tmp/sun.json","w");
+	if($f){
+		fwrite($f,json_encode($sun));
+		fclose($f);
+	}
+	else
+		echo json_encode($sun)."\n";
+?>

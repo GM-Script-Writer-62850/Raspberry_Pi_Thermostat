@@ -1,0 +1,10 @@
+#!/bin/sh
+if [ "$USER" != "root" ]; then
+	echo "You are NOT root"
+	exit
+fi
+id=$(pgrep -fl thermostat | grep "/usr/local/sbin/thermostat" | grep '/bin/python' | awk '{print $1}')
+if [ -n "$id" ]; then
+	kill -9 "$id"
+fi
+thermostat &
