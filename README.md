@@ -1,5 +1,5 @@
 ```
-I have uploaded this here in th hopes that it will be useful for someone
+I have uploaded this here in the hopes that it will be useful for someone
 Thermostat Behavior:
 	My thermostat has 2 mercury tubes, I used 2 relays to replace them, if the unit is set to tool setting the top relay control pin high turns the AC on, the bottom relay has no effect when the unit is set to cool.
 	When the unit is set to heat, the when the top relay control pin is set low the heat turn on, when the bottom relay control pin is set high the secondary heating coils turn on.
@@ -44,9 +44,9 @@ Parts used:
 	1 single gang blank cover plate
 	Existing Honeywell thermostat that is older than me
 Folder placement:
-	bin		=> /usr/local/bin
+	bin			=> /usr/local/bin
 	sbin		=> /usr/local/sbin
 	html		=> /var/www/html
 	crontabs	=> /var/spool/cron/crontabs
-	etc		=> /etc
+	etc			=> /etc
 ```
