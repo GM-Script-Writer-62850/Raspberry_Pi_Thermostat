@@ -93,7 +93,7 @@ function addEvent(){
 		li=make('li');
 		cb=make('input');
 		cb.type='checkbox';
-		cb.value=i+1;
+		cb.value=i==6?0:i+1;
 		insert(li,cb);
 		insert(li,makeTxt(days[i]+'day'));
 		insert(ul,li);
