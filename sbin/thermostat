@@ -139,6 +139,7 @@ try:
 					sun=readJSON("tmp/sun.json")
 					offset=getOffset(sun,cfg)
 					temp=getTemp()
+					getTarget(cfg,offset) # Only to keep LCD upto date
 				GPIO.output(relayA, 0) # Stop cooling
 			else:
 				GPIO.output(relayA, 0) # Do not cool
