@@ -17,6 +17,10 @@ tubeB=16 # Bottom Tube
 delay=2 # Loop Delay
 logInt=5 # Munites between datas collection while running, use 0 for none (Approximate)
 
+# sqlite Logging feature is not 100% complete, undecided on full implementation
+#  it lacks a GUI for viewing records and does not log weather at this time.
+#  It may be scraped in-favor of a plain text log or redesigned completely
+
 try:
 	#log=sqlite3.connect('/var/www/html/thermostat.sqlite3') 
 	log=None
