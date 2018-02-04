@@ -6,6 +6,8 @@ import json
 import os
 import subprocess
 import sys
+import signal
+import sqlite3
 
 nLight=12 # Night Light
 relayA=11 # Top Relay
@@ -13,6 +15,44 @@ relayB=13 # Bottom Relay
 tubeA=15 # Top Tube
 tubeB=16 # Bottom Tube
 delay=2 # Loop Delay
+logInt=5 # Munites between datas collection while running, use 0 for none (Approximate)
+
+try:
+	#log=sqlite3.connect('/var/www/html/thermostat.sqlite3') 
+	log=None
+	logInt=logInt*60/delay # number of delays between logs
+except sqlite3.Error as e:
+	print e
+if log is not None:
+	dbc=log.cursor()
+	dbc.executescript(
+		"CREATE TABLE IF NOT EXISTS copy ("
+			"time  INTEGER PRIMARY KEY,"
+			"r1    INTEGER NOT NULL,"
+			"r2    INTEGER NOT NULL,"
+			"temp  INTEGER NOT NULL"
+		");"
+		"CREATE TABLE IF NOT EXISTS heat ("
+			"time  INTEGER PRIMARY KEY,"
+			"r1    INTEGER NOT NULL,"
+			"r2    INTEGER NOT NULL,"
+			"temp  INTEGER NOT NULL"
+		");"
+		"CREATE TABLE IF NOT EXISTS cool ("
+			"time  INTEGER PRIMARY KEY,"
+			"r1    INTEGER NOT NULL,"
+			"temp  INTEGER NOT NULL"
+		");"
+		"CREATE TABLE IF NOT EXISTS weather ("
+			"time  INTEGER PRIMARY KEY," # weather.current_observation.observation_epoch
+			"temp  INTEGER NOT NULL," # weather.current_observation.temp_c
+			"wind  FLOAT NOT NULL," # weather.current_observation.wind_kph
+			"wdeg  INTEGER NOT NULL," # weather.current_observation.wind_degrees
+			"dewp  INTEGER NOT NULL" # weather.current_observation.dewpoint_c
+		");"
+		
+	)
+
 GPIO.setmode(GPIO.BOARD)
 for i in [relayA, relayB, nLight]:
 	GPIO.setup(i, GPIO.OUT)
@@ -36,7 +76,7 @@ def readTemp():
 	with open(s, 'r') as f:
 		lines=f.readlines()
 	return lines
-def getTemp():
+def getTemp(last=None,cycled=0):
 	lines=readTemp()
 	if lines is False:
 		return False
@@ -46,10 +86,18 @@ def getTemp():
 		time.sleep(0.3)
 		lines=readTemp()
 		if ct > 5 or lines is False: # Guess we are not going to get one any time soon
-				return False
+			return False
 	equals_pos = lines[1].find('t=')
 	if equals_pos != -1:
-		temp = {"temp":int(lines[1][equals_pos+2:]),"tube1":GPIO.input(tubeA),"tube2":GPIO.input(tubeB),"relay1":GPIO.input(relayA),"relay2":GPIO.input(relayB)}
+		temp = {"temp":int(lines[1][equals_pos+2:]),"tube1":GPIO.input(tubeA),"tube2":GPIO.input(tubeB),"relay1":GPIO.input(relayA),"relay2":GPIO.input(relayB),"cycled":cycled}
+		if last!=None:
+#			print last
+#			print temp["temp"]
+#			print abs(last-temp["temp"])
+			if abs(last-temp["temp"]) > 1000:
+#				print "I call bull shit"
+				time.sleep(0.25)
+				return getTemp(temp["temp"]) # I call bull shit
 		with open('/var/www/html/tmp/temp.json', 'w+') as f:
 			json.dump(temp,f)
 		return temp["temp"]
@@ -63,14 +111,23 @@ def getOffset(sun,cfg):
 		return cfg["day"]
 	GPIO.output(nLight, 0)
 	return cfg["night"]
-def getTarget(cfg,offset):
+def getTarget(cfg,offset,temp):
 	t=cfg["target"]+offset
 	with open('/var/www/html/tmp/lcd.json', 'w+') as f:
-		f.write('{"format":"'+cfg["format"]+'","on":'+str(t)+',"off":'+str(t+cfg["trigger"])+'}')
+		json.dump({"format":cfg["format"],"on":t,"off":t+cfg["trigger"],"temp":temp,"enable":cfg["enabled"]},f)
+#		f.write('{'
+#			'"format":"'+cfg["format"]+'",'
+#			'"on":'+str(t)+','
+#			'"off":'+str(t+cfg["trigger"])+','
+#			'"temp":'+str(temp)+','
+#			'"enable":'+str(cfg["enabled"])+
+#		'}')
 	return t+cfg["trigger"]
 def copyTubes(set):
-	GPIO.output(relayA, GPIO.input(tubeA))
-	GPIO.output(relayA, GPIO.input(tubeB))
+	if GPIO.input(tubeA) != GPIO.input(relayA) or GPIO.input(tubeB) != GPIO.input(relayB):
+		GPIO.output(relayA, GPIO.input(tubeA))
+		GPIO.output(relayA, GPIO.input(tubeB))
+		appendLog(0)
 	if not set:
 		GPIO.output(nLight, not GPIO.input(nLight))
 #		print "ERROR"
@@ -108,6 +165,37 @@ def getCronOffset():
 				if time >= start and time <= end:
 					evtOffset=evtOffset+evt["offset"]
 	return evtOffset
+def appendLog(state):
+	# We do not need to worry about a sql injeciton attack as we know the data is safe
+	if log is None:
+		return 0
+	if state == 1:
+		table="cool"
+		dbc.execute(
+			"INSERT INTO cool(time,r1,temp)"
+			"VALUES("+str(time.time())+","+str(GPIO.input(relayA))+","+str(temp)+")"
+		)
+	else:
+		if state == 2:
+			table="heat"
+		else:
+			table="copy"
+		dbc.execute(
+			"INSERT INTO "+table+"(time,r1,r2,temp)"
+			"VALUES("+str(time.time())+","+str(GPIO.input(relayA))+","+str(GPIO.input(relayB))+","+str(temp)+")"
+		)
+	limit=10000 # Effective max size will be limit*2-1, once this limit is reached the table will have a min size of limit
+	if dbc.lastrowid % limit == 0:
+		dbc.execute("DELETE FROM "+table+" WHERE id < "+str(int(dbc.lastrowid-limit))+";")
+		log.execute("VACUUM")
+	log.commit()
+def terminate(*args):
+	GPIO.cleanup()
+	if log is not None:
+		log.close()
+	print "\n"
+	sys.exit(0)
+signal.signal(signal.SIGINT, terminate)
 try:
 	while int(time.time()) < 1435104823: # Wait for clock to work
 		copyTubes(0)
@@ -118,70 +206,91 @@ try:
 		time.sleep(delay)
 	if os.path.isfile(err):
 		os.unlink(err)
+	temp=None
 	while True:
 		cfg=config2C(readJSON("config.json"))
 		sun=readJSON("tmp/sun.json")
 		offset=getOffset(sun,cfg)
-		temp=getTemp()
-		target=getTarget(cfg,offset)
+		temp=getTemp(temp)
+		target=getTarget(cfg,offset,temp)
+		lpCt=0
 		while temp is False: # Sensor is missing
 			temp = copyTubes(0)
 			time.sleep(delay)
 		if cfg["trigger"] > 0: # Cooling
-			GPIO.output(relayB, 0)
-			if target <= temp:
+			GPIO.output(relayB, 0) # Only used for heating
+			if target <= temp and cfg["enabled"] == 1:
 				GPIO.output(relayA, 1) # Cool
-				while temp >= cfg["target"]+offset: # Keep cooling
+				appendLog(1)
+				while temp >= cfg["target"]+offset and cfg["enabled"] == 1: # Keep cooling
 					time.sleep(delay)
 					cfg=config2C(readJSON("config.json"))
 					if cfg["trigger"] <= 0:
 						break
 					sun=readJSON("tmp/sun.json")
 					offset=getOffset(sun,cfg)
-					temp=getTemp()
-					getTarget(cfg,offset) # Only to keep LCD upto date
+					temp=getTemp(temp)
+					getTarget(cfg,offset,temp) # Only to keep LCD upto date
+					lpCt=lpCt+1
+					if lpCt == logInt:
+						lpCt=0
+						appendLog(1)
 				GPIO.output(relayA, 0) # Stop cooling
+				appendLog(1)
 			else:
 				GPIO.output(relayA, 0) # Do not cool
 		elif cfg["trigger"] < 0 : # Heating
-			if target >= temp:
+			if target >= temp and cfg["enabled"] == 1:
 				GPIO.output(relayA, 0) # Heat
+				appendLog(2)
 #				startTemp=temp
 #				started=False
-				while temp <= cfg["target"]+offset: # Keep heating
+				cycled=0 # used under heating, but we are storing this value
+				Otemp=0
+				while temp <= cfg["target"]+offset and cfg["enabled"] == 1: # Keep heating
 #					if not started and temp-500 < startTemp: # If temp drop after start (drop of 0.5C/0.9F)
 #						GPIO.output(relayB, 1) # Need more heat
 #						while temp < startTemp+250 and temp <= cfg["target"]+offset: # wait till back where we started (gain of 0.25C/0.45F)
 #							time.sleep(delay)
-#							temp=getTemp()
+#							temp=getTemp(temp)
 #							started=config2C(readJSON("config.json"))
 #							if started != cfg: # Exit task on new settings
 #								cfg=started
 #								break
 #						GPIO.output(relayB, 0) # Heat slower
-#						started=True # Don't do this again this heating cycle 
-					if GPIO.input(relayB) == 0:
-						aux=cfg["auxon"] # aux off
-					else:
-						aux=cfg["auxon"]+cfg["auxoff"] # aux on
-					if temp <= target+aux:
+#						started=True # Don't do this again this heating cycle
+					aux=target+cfg["auxon"]
+					if cycled == 1 and temp <= Otemp-260: # Aux shut off and temp fell 0.26C (~0.5F) while the heat was running, better turn it on and keep it on
+						cycled=2
+					if (temp <= aux or cycled == 2 ) and cfg["auxenabled"] == 1:
 						if GPIO.input(relayB) == 0:
 							GPIO.output(relayB, 1) # Need more heat
+							appendLog(2)
 #							print "More heat - "+str(temp)
-					else:
+					elif temp >= aux+cfg["auxoff"] or cfg["auxenabled"] == 0:
 						if GPIO.input(relayB) == 1:
+							Otemp=temp
+							cycled=cycled+1
 							GPIO.output(relayB, 0) # Heat slower
+							appendLog(2)
 #							print "AUX off - "+str(temp)
+					if cycled == 1 and temp > Otemp: # Lets not waits the heat we just got via Aux
+						Otemp=temp
 					time.sleep(delay)
 					cfg=config2C(readJSON("config.json"))
 					if cfg["trigger"] >= 0:
 						break
 					sun=readJSON("tmp/sun.json")
 					offset=getOffset(sun,cfg)
-					temp=getTemp()
-					target=getTarget(cfg,offset)
+					temp=getTemp(temp,cycled)
+					target=getTarget(cfg,offset,temp)
+					lpCt=lpCt+1
+					if lpCt == logInt:
+						lpCt=0
+						appendLog(2)
 				GPIO.output(relayB, 0) # Stop Heating
 				GPIO.output(relayA, 1) # Stop Heating
+				appendLog(2)
 			else: # Do not heat
 				GPIO.output(relayA, 1)
 				GPIO.output(relayB, 0)
@@ -189,7 +298,7 @@ try:
 			copyTubes(1)
 		time.sleep(delay)
 except KeyboardInterrupt:
-	print "\n"
+	terminate()
 except BaseException, e: # Something went wrong
 	exc_type, exc_value, exc_traceback = sys.exc_info()
 	with open(err, 'w+') as f:
@@ -199,9 +308,9 @@ except BaseException, e: # Something went wrong
 			copyTubes(0)
 			time.sleep(delay)
 	except KeyboardInterrupt:
-		print "\n"
+		terminate()
 	except BaseException, e: # Something went very wrong
 		exc_type, exc_value, exc_traceback = sys.exc_info()
 		with open(err, 'a') as f:
 			f.write(str(exc_value))
-GPIO.cleanup()
+#terminate()

@@ -10,7 +10,7 @@ These files/folders should be owned by www-data
 	html/tmp
 Parts used:
 	1 Raspberry Pi Zero
-	1 G.skill 16GB micro SD card (i trust this brand with all my PIs)
+	1 G.skill 16GB micro SD card (I trust this brand with all my PIs)
 	1 USB shim adapter
 	1 EDIMAX EW-7811Un N150 USB 2.0 Wireless nano Adapter
 	2 Common Anode 2-digit 7 segment panel (Cheapest 2 digit 7 segment LCD panels I could find on ebay)
@@ -21,16 +21,18 @@ Parts used:
 	1 Double sided 5x7cm prototyping board
 	2 TIP120 transistors (overkill)
 	1 Momentary SPDT mini toggle switch
-	1 5.25V 1 amp power adapter
+	1 5.25V 1 amp power adapter (Guts replaced with a MFM-05-5)
 	1 DIY micro USB power cable
-	19 1/4 Watt resistors (varying resistances)
+	19 1/4 Watt 1% resistors (varying resistances)
 	2 SRD-5VDC-SL-C relays
+	3 WIMA 0.1uf 200VAC film capacitors
+	3 1/2 Watt 5% 10 Ohm resistors
 	1 D18B20 thermal sensor
 	1 Annoyingly bright blue led (salvaged)
 	2 3mm green LEDs (won 100 on ebay for $0.10)
-	0.X heat shrink
+	0.X Heat Shrink
 	0.X Electrical Tape (used with heat shrink on power adapter plug)
-	1 zip tie (salvaged)
+	1 Zip tie (salvaged)
 	1 PASS & SEYMOUR S1-22-W Single gang electrical old work box
 	1 Ballast disconnect discs (salvaged)
 	2 SRP100K-E3/54 Diodes (flywheel usage)
@@ -49,4 +51,5 @@ Folder placement:
 	html		=> /var/www/html
 	crontabs	=> /var/spool/cron/crontabs
 	etc			=> /etc
+Documentation at html/notes
 ```

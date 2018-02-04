@@ -29,6 +29,9 @@
 #overlay > div > input:not(:nth-child(4)){
 	margin-right:55px;
 }
+#overlay select,#overlay input[type="button"],#overlay input[type="checkbox"]{
+        cursor:pointer;
+}
 #overlay p{
 	text-indent:50px;
 	text-align:left;

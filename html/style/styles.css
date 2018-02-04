@@ -33,9 +33,37 @@ body.copy #newSettings,
 #oldSettings.copy table,
 body:not(.copy) #footer .copycat,
 body:not(.heat) span.heat,
+body:not(.heat) li.heat,
 body:not(.cool) span.cool,
-body:not(.copy) span.copycat{
+body:not(.cool) li.cool,
+body:not(.copy) span.copycat,
+body:not(.copy) li.copycat,
+body.copy #body .nocopy,
+#body:not(.noob) .noob,
+#body.noob .adv,
+.F .C,
+.F .K,
+.C .F,
+.C .K,
+.K .F,
+.K .C,
+.tool:not(:hover) .tip,
+.tool .tip:hover,
+#mobileFooter{
 	display:none;
+}
+.tool{
+	position:relative;
+}
+.tip{
+	background-color:rgba(0,0,0,.85);
+	position:absolute;
+	bottom:100%;
+	left:75%;
+	border:solid 1px white;
+	border-radius:5px;
+	width:225px;
+	padding:5px;
 }
 body.heat #status td:first-child .Right,
 body.heat #status td:last-child .Right,
@@ -59,6 +87,7 @@ body{
 	font-family:"Times New Roman";
 	margin:0;
 	min-height:100%;
+	padding:0 3px;
 }
 body > div.padding{
 	display:block;
@@ -70,10 +99,13 @@ a{
 code{
 	font-size:15px;
 }
+
 #content{
 	text-align:left;
 	display:block;
-	width:650px;
+	max-width:650px;
+	min-width:620px;
+	width:auto;
 	margin:0 auto;
 	background:rgba(0,0,0,.85);
 	color:white;
@@ -102,13 +134,26 @@ code{
 #body{
 	min-height:400px;
 }
-#body input[type="text"]{
+#body input[type="text"],
+#body input[type="number"]{
 	text-align:left;
 }
+#body input[type="number"][size="2"]{
+	width:37px;
+}
+#body input[type="number"][size="3"]{
+	width:44px;
+}
+#body input[type="checkbox"],
+#body select,
+#body input[type="button"]{
+	cursor:pointer;
+}
 #body .item{
-	width:50%;
+	width:45%;
 	display:block;
 	margin-top:3px;
+	line-height:24px;
 }
 #body .label,#body .value{
 	width:calc( 50% - 2px );
@@ -116,9 +161,9 @@ code{
 }
 #body #tips{
 	float:right;
-	width:50%;
+	width:55%;
 }
-#body #tips > ul{
+#body #tips ul{
 	padding-left:20px;
 }
 #body h3, #body #tips ul{
@@ -128,7 +173,24 @@ code{
 	display:inline-block;
 	text-align:center;
 }
-#body > div{
+#notice{
+	background:darkred;
+	color:white;
+	border-radius:5px;
+	padding:5px;
+	font-size:18px;
+	margin-top:5px;
+}
+#settings{
+	width:100%;
+}
+#settings div:first-child{
+	float:left;
+}
+#settings div:last-child{
+	float:right;
+}
+#settings div{
 	width:calc(50% - 2px);
 }
 #body #status{
@@ -152,6 +214,44 @@ table,th,td{
 th,td{
 	padding:2px 3px;
 }
-#footer{
+#footer,
+#mobileFooter{
 	text-align:center;
+}
+@media (max-width:768px){
+	body.cool{
+		background-image:url(snow.png), url(snow_still.gif);
+	}
+}
+@media (max-width:635px){
+	#oldSettings,
+	#footer,
+	#weather,
+	#tips,
+	#status,
+	.tip{
+		display:none!important;
+	}
+	#mobileFooter{
+		display:block;
+	}
+	#header{
+		font-size:27px;		
+	}
+	#content{
+		width:338px;
+		min-width:300px;
+	}
+	#settings div,
+	#body .item{
+		width:100%;
+	}
+	#buttons input{
+		min-height:40px;
+	}
+}
+@media (max-width:359px){
+	#content{
+		width:calc(100% - 17px);
+	}
 }

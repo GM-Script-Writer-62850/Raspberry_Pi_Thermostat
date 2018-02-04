@@ -56,7 +56,6 @@ function getWeather(){
 				addRow(tbl,'Heat index',weather.heat_index_string);
 				addRow(tbl,'Wind',weather.wind_string);
 				addRow(tbl,'Windchill',weather.windchill_string);
-				addRow(tbl,'Visibility',weather.visibility_string);
 				addRow(tbl,'Dew Point',weather.dewpoint_string);
 				addRow(tbl,'Relative Humidity',weather.relative_humidity);
 				addRow(tbl,'Air Pressure',weather.pressure_string);

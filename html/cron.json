@@ -1,1 +1,1 @@
-[]
+[{"enable":false,"days":[1,2,3,4,5,6,0],"time":{"start":{"h":10,"m":0},"end":{"h":23,"m":0}},"offset":4},{"enable":false,"days":[1,2,3,4,0],"time":{"start":{"h":21,"m":0},"end":{"h":23,"m":0}},"offset":-2}]

@@ -3,8 +3,69 @@ if [ "$USER" != "root" ]; then
 	echo "You are NOT root"
 	exit
 fi
-id=$(pgrep -fl thermostat | grep "/usr/local/sbin/thermostat" | grep '/bin/python' | awk '{print $1}')
-if [ -n "$id" ]; then
-	kill -9 "$id"
+if [ "$1" = "killall" ]; then
+	if [ $(pgrep -fl thermostat | wc -l) -gt 0 ]; then
+		echo "Found thermostat process(es)"
+		kill -2 $(pgrep -fl thermostat | awk '{print $1}')
+		sleep 1
+		if [ $(pgrep -fl thermostat |wc -l) -gt 0 ]; then
+			echo "Force KILL thermostat"
+			kill -9 $(pgrep -fl thermostat | awk '{print $1}')
+		fi
+	fi
+	if [ $(pgrep -fl lcd |wc -l) -gt 0 ]; then
+		echo "Found lcd process(es)"
+		kill -2 $(pgrep -fl lcd | awk '{print $1}')
+		sleep 1.2
+		if [ $(pgrep -fl lcd | wc -l) -gt 0 ]; then
+			echo "Force KILL lcd"
+			kill -9 $(pgrep -fl lcd | awk '{print $1}')
+		fi
+	fi
+	echo "Done!"
+	exit
+elif [ "$1" = "list" ]; then
+	echo "thermostat PIDs:"
+	pgrep -fl thermostat | awk '{print $1}'
+	echo "lcd PIDs:"
+	pgrep -fl lcd | awk '{print $1}'
+	exit
+elif [ "$1" != "" ] && [ "$1" != "nokill" ];then
+	echo "Options:"
+	echo "	killall | nokill | list"
+	exit
 fi
-thermostat &
+id=$(pgrep -fl thermostat | awk '{print $1}' | tail -1)
+if [ -n "$id" ] && [ "$1" != "nokill" ]; then
+	echo "Found thermostat on $id"
+	kill -2 "$id"
+	sleep 1
+	if [ -e "/proc/$id" ]; then
+		echo "Exterminate $id!"
+		kill -9 "$id"
+	fi
+fi
+if [ -z "id" ] || [ ! -e "/proc/$id" ]; then
+	rm /var/www/html/tmp/lcd.json
+	thermostat &
+	echo "Started thermostat as $!"
+else
+	echo "$id NOT TERMINATED, WILL NOT START SECOND INSTANCE"
+fi
+id=$(pgrep -fl lcd | awk '{print $1}' | tail -1)
+if [ -n "$id" ] && [ "$1" != "nokill" ]; then
+	echo "Found lcd on $id"
+	kill -2 "$id"
+	sleep 1.2
+	if [ -e "/proc/$id" ]; then
+		echo "Exterminate $id!"
+		kill -9 "$id"
+	fi
+fi
+if [ -z "$id" ] || [ ! -e "/proc/$id" ]; then
+	lcd &
+	echo "Started lcd as $!"
+else
+	echo "$id NOT TERMINATED, WILL NOT START SECOND INSTANCE"
+fi
+echo "Done"

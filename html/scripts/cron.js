@@ -89,7 +89,7 @@ function addEvent(){
 		evt,btn,i,li,cb,sel,
 		ul=make('ul'),
 		days=Array('Mon','Tues','Wednes','Thurs','Fri','Satur','Sun');
-	for(i=0;i<days.length;i++){
+	for(i=0;i<7;i++){
 		li=make('li');
 		cb=make('input');
 		cb.type='checkbox';
