@@ -57,7 +57,7 @@ function eventManager(){
 					i,s,x,q,e;
 				for(i=0,s=cron.length;i<s;i++){
 					e=addEvent();
-					findEle('div[@class="enable"]/input',9,e).checked=cron[i]["enable"];
+					findEle('div[@class="ctrl"]/input[@type="checkbox"]',9,e).checked=cron[i]["enable"];
 					for(x=0,q=cron[i]["days"].length;x<q;x++){
 						findEle('ul//input[@value="'+cron[i]["days"][x]+'"]',9,e).checked=true;
 					}
@@ -65,6 +65,7 @@ function eventManager(){
 					for(x=0;x<4;x++)
 						q.snapshotItem(x).value=cron[i]["time"][x<2?"start":"end"][x&1?"m":"h"];
 					findEle('div[@class="time"]/input',9,e).value=cron[i]["offset"];
+					findEle('div[@class="ctrl"]/input[@type="text"]',9,e).value=cron[i]["name"];
 				}
 			}
 			else
@@ -114,7 +115,7 @@ function addEvent(){
 	ul.className='time';
 	insert(ul,makeTxt('Start: '));
 	insert(ul,sel);
-	insert(ul,makeTxt(':'));
+	insert(ul,makeTxt(' : '));
 	sel=make('select');
 	sel.addEventListener('change',validTime,false);
 	sel.name=0;
@@ -140,7 +141,7 @@ function addEvent(){
 	}
 	insert(ul,makeTxt('End: '));
 	insert(ul,sel);
-	insert(ul,makeTxt(':'));
+	insert(ul,makeTxt(' : '));
 	sel=make('select');
 	sel.addEventListener('change',validTime,false);
 	sel.name=59;
@@ -160,7 +161,7 @@ function addEvent(){
 	li.value=0;
 	li.size=2;
 	li.addEventListener('change',function(){this.value=Number(this.value)||0;},false);
-	li.setAttribute('onkeypress','return validateKey(this,event,true);');
+	li.setAttribute('onkeydown','return validateKey(this,event,true);');
 	insert(ul,makeTxt('Adjust by: '));
 	insert(ul,li);
 	if(document.thermostat.className!='K')
@@ -168,7 +169,23 @@ function addEvent(){
 	insert(evt,ul);
 
 	ul=make('div');
-	ul.className='enable';
+	ul.className='ctrl';
+
+	btn=make('input');
+	btn.type='text';
+	btn.value='Event Name';
+	btn.name="name";
+	insert(ul,btn);
+
+	btn=make('input');
+	btn.type='button';
+	btn.value='Delete Event';
+	btn.addEventListener('click',function(){
+		if(confirm('Delete event "'+this.parentNode.childNodes[0].value+'"'))
+			this.parentNode.parentNode.parentNode.removeChild(this.parentNode.parentNode);
+	},false);
+	insert(ul,btn);
+
 	li=make('input');
 	li.type='checkbox';
 	li.value='enable';
@@ -178,13 +195,6 @@ function addEvent(){
 	insert(ul,li);
 	insert(evt,ul);
 
-	btn=make('input');
-	btn.type='button';
-	btn.value='Delete Event';
-	btn.addEventListener('click',function(){
-		this.parentNode.parentNode.removeChild(this.parentNode);
-	},false);
-	insert(evt,btn)
 	insert(events,evt);
 	return evt;
 }
@@ -199,7 +209,7 @@ function saveEvents(){
 		ele=events.snapshotItem(i);
 		x=findEle('div/select',6,ele);
 		cron[i]={
-			"enable":findEle('div[@class="enable"]/input',9,ele).checked,
+			"enable":findEle('div[@class="ctrl"]/input[@type="checkbox"]',9,ele).checked,
 			"days":[],
 			"time":{
 				"start":{
@@ -211,7 +221,8 @@ function saveEvents(){
 					"m":parseInt(x.snapshotItem(3).value)
 				}
 			},
-			"offset":Number(findEle('div[@class="time"]/input',9,ele).value)
+			"offset":Number(findEle('div[@class="time"]/input',9,ele).value),
+			"name":findEle('div[@class="ctrl"]/input[@type="text"]',9,ele).value
 		};
 		days=findEle('ul//input',6,ele);
 		for(x=0,s=days.snapshotLength;x<s;x++){

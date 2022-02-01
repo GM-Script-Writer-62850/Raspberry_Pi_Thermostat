@@ -65,7 +65,7 @@ echo $$ > $lockfile
 # We can perform check
 echo "Performing Network check for $wlan"
 broken=0
-if ifconfig $wlan | grep -q "inet addr:" ; then
+if ifconfig $wlan | grep -q "10.0.0.75" ; then
 	echo "Network is seemingly Okay"
 	echo
 	echo "Ping Test:"

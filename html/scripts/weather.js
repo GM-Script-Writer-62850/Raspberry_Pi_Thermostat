@@ -77,3 +77,4 @@ function getWeather(){
 	setTimeout(getWeather,60000);
 }
 window.addEventListener("load",getWeather,false);
+findEle('//div[@id="status"]',9).className='side';

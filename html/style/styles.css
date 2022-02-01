@@ -193,10 +193,20 @@ code{
 #settings div{
 	width:calc(50% - 2px);
 }
+#buttons input{
+	padding:0;
+}
 #body #status{
 	margin-top:10px;
-	width:calc( 29% - 2px);
+	width:100%;
+}
+#body #status.side{
 	float:right;
+	width:calc( 29% - 2px );
+}
+#body #status:not(.side) > div{
+	width: calc( 50% - 2px);
+	display: inline-block;
 }
 #body #weather{
 	margin-top:10px;

@@ -81,7 +81,7 @@ function setBackground(e){
 	NEW["dayAuxOn"].textContent=ae&&ee?fixFloat(t+t2+a+d)+f:"Off";
 	aOff=fixFloat(t+t2+a+a2+d);
 	NEW["dayAuxOff"].textContent=ae&&ee?(aOff>off?off:aOff)+f:"Off";
-	
+
 	NEW["nightOn"].textContent=ee?fixFloat(t+t2+n)+f:"Off";
 	off=fixFloat(t+n);
 	NEW["nightOff"].textContent=ee?off+f:"Off";
@@ -95,34 +95,37 @@ function setBackground(e){
 	e.enabled.nextSibling.textContent=ee?'Yes':'No';
 	e.auxenabled.nextSibling.textContent=ae?'Yes':'No';
 }
-function validateKey(ele,e,bool){// MS edge does not detect arrow keys here
+function validateKey(ele,e,bool){
 	function blur(e){
 		e.dispatchEvent(new Event('blur'));
 	}
-	if((e.which==95||e.shiftKey&&e.which==45)&&bool){// _ or Shift -
+	//console.log(e.key);
+	if(bool&&(['_','-'].indexOf(e.key)>-1)&&e.shiftKey&&bool){
 		ele.value=ele.value*-1;
 		blur(ele);
 		return false;
 	}
-	e=e.which==0?e.keyCode:e.which;
-	if(e==13){// Enter
+	if('Enter'==e.key){// Enter
 		blur(ele);
 		return true;
 	}
-	if([38,119,100].indexOf(e)>-1){// up,w,d
+	if(['ArrowUp','w','d','+'].indexOf(e.key)>-1){
 		ele.value++;
 		blur(ele);
 		return false;
 	}
-	if([40,115,97].indexOf(e)>-1){// down,s,a
+	if(['ArrowDown','s','a'].indexOf(e.key)>-1||e.key=='-'&&e.target.selectionStart>0){
 		if(bool||ele.value-1>=0){
-			ele.value=fixFloat(ele.value-1);
+			ele.value=fixFloat((isNaN(ele.value)?0:ele.value)-1);
 			blur(ele);
 		}
 		return false;
 	}
-	if(!isNaN(String.fromCharCode(e))||[8,46,43,45,37,39].indexOf(e)>-1)
+	if(['.','-','Backspace','Delete','Execute','Insert','ArrowLeft','ArrowRight','F1','F2','F3','F4','F5','F6','F7','F8','F9','F10','F11','F12','Escape','Control','Home','End','PageUp','PageDown'].indexOf(e.key)>-1||!isNaN(e.key)){
+		if(!bool&&e.key=='-')
+			return false;
 		return true;
+	}
 	// anything else (mostly letters)
 	return false;
 }
@@ -141,7 +144,6 @@ function getSun(){
 				OLD["night"].textContent=stamp2Time(SUN["set"]["stamp"]+O_CFG["sunset"]*60);
 			}
 			setTimeout(getSun,3600000);
-			
 		}
 	};
 	httpRequest.open('GET', 'tmp/sun.json?noCache='+new Date().getTime());
@@ -184,7 +186,7 @@ function updateTemp(){
 				}
 				TEMP=json.temp/1000;
 				temp.textContent=convert['2D'](convert['C2'+f](TEMP),2)+(f=='K'?' ':'°')+f;
-				s=json.tube1==0?'Left':'Right';
+				s=json.tube1==0?'Right':'Left';
 				TUBES.a.textContent=s;
 				TUBES.a.className=s;
 				s=json.tube2==0?'Left':'Right';
@@ -208,17 +210,26 @@ function updateTemp(){
 	httpRequest.send(null);
 }
 function setTarget(e,thermostat){
+	var delta={
+		"F":thermostat.format.value=='F',
+		"AF":1,//1.4616,
+		"BF":1,//1.125,
+		"ABF":1,//0.8433,
+		"AC":0.5,//0.812,
+		"BC":0.5,//0.625,
+		"ABC":0.5//0.4685
+	}
 	if(isNaN(e.selectedIndex)){
 		e=Number(e.value);
 		if(isNaN(e))
 			return alert('Numbers only please');
 		if(thermostat.trigger.value>0){
-			thermostat.target.value=e-0.5;
-			thermostat.trigger.value=1;
+			thermostat.target.value=e-((delta.F?delta.AF:delta.AC)/2);
+			thermostat.trigger.value=delta.F?delta.AF:delta.AC;
 		}
 		else{
-			thermostat.target.value=e+0.5;
-			thermostat.trigger.value=-1;
+			thermostat.target.value=e+((delta.F?delta.AF:delta.AC)/2);
+			thermostat.trigger.value=-1*(delta.F?delta.AF:delta.AC);
 		}
 	}
 	else{
@@ -227,8 +238,8 @@ function setTarget(e,thermostat){
 	thermostat.day.value=0;
 	thermostat.enabled.checked=true;
 	thermostat.auxenabled.checked=true;
-	thermostat.auxon.value=thermostat.format.value=='F'?0.9:0.5;
-	thermostat.auxoff.value=thermostat.auxon.value*1.67;
+	thermostat.auxon.value=delta.F?delta.ABF:delta.ABC;
+	thermostat.auxoff.value=thermostat.auxon.value*2;
 	setBackground(thermostat);
 }
 function setNoob(b){
@@ -244,7 +255,7 @@ function setNoob(b){
 }
 function apply(e){
 	var msg=' setting is within the margin of error, this can cause poor efficiency\nClick OK to ignore';
-	if(Math.abs(e.trigger.value)<=(thermostat.format.value=="F"?1.197:0.665)&&e.trigger.value!=0){
+	if(Math.abs(e.trigger.value)<=(thermostat.format.value=="F"?1.197:0.665)&&e.trigger.value!=0&&e.skill.value=='adv'){
 		if(!confirm('Your "'+(e.trigger.value>0?'Cool':'Heat')+'"'+msg))
 			return false;
 	}

@@ -20,7 +20,7 @@ db=19
 dc=22
 dd=21
 
-ia=29
+ia=26
 ib=31
 
 def readJSON(f):
@@ -138,20 +138,25 @@ RUN=True
 start_new_thread(LCD_panel,())
 try:
 	while True:
-		# {"format":"F","on":21111,"off":20278,"temp":21750,"enable":0}
+		# {"format":"F","on":21111,"off":20278,"temp":21750,"enable":0,"relay":0}
 		lcd=readJSON('lcd.json')
 		temp=lcd["temp"]
 		on=lcd["on"]
-		#off=lcd["off"]
+		off=lcd["off"]
 		cp=lcd["off"]==on
+		relay=lcd["relay"]
 		if(lcd["format"]=="F"):
 			temp=toInt((temp*1.8+32000.0)/1000.0)
 			on=toInt((on*1.8+32000.0)/1000.0)
-			#off=toInt((off*1.8+32000.0)/1000.0)
+			off=toInt((off*1.8+32000.0)/1000.0)
 		else:
 			temp=toInt(temp/1000.0)
 			on=toInt(on/1000.0)
-			#off=toInt(off/1000.0)
+			off=toInt(off/1000.0)
+		if(relay==(lcd["on"]>lcd["off"])):
+			event=off
+		else:
+			event=on
 		thermal=str(temp)
 		numbers[0]=strInt(thermal[-2:-1])
 		numbers[1]=strInt(thermal[-1:])
@@ -163,17 +168,17 @@ try:
 				if lcd["enable"] == 0:
 					lcd["enable"]=1
 				elif GPIO.input(ia):
-					on=on-1
+					event=event-1
 					adj=adj-1
 				else:
-					on=on+1
+					event=event+1
 					adj=adj+1
-				showTarget(on)
+				showTarget(event)
 				sleep(1)
 			saveTarget(adj)
 			sleep(2.5)
 		elif lcd["enable"] == 1:
-			showTarget(on)
+			showTarget(event)
 		else:
 			showTarget("")
 		sleep(1.2)

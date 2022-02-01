@@ -18,7 +18,10 @@ if [ "$_IP" ]; then
 fi
 mkdir /tmp/ram
 mount -t ramfs -o size=1M ramfs /tmp/ram
+mkdir /tmp/log
+mount -t ramfs -o size=50M ramfs /tmp/log
 chmod 777 /tmp/ram
+chmod 777 /tmp/log
 /usr/bin/python /usr/local/sbin/thermostat &
 /usr/bin/python /usr/local/sbin/lcd &
 /usr/bin/tvservice -o
